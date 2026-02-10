@@ -1,4 +1,5 @@
 import { Users, Castle, MapPin, Gem, Lightbulb, Calendar, Network, Map, Link2, Download, BookOpen, Brain, Sparkles, Wand2, AlertTriangle, Search, Type, History, Route, Layers, Palette, Target, MessageSquare, Bug, Languages, Database, GitBranch, BarChart3, FileText, FolderOpen, Music, Coins, ArrowDownUp, Boxes, TrendingUp, Gamepad2 } from 'lucide-react';
+import packageJson from '../../package.json';
 
 const navItems = [
   { id: 'characters', icon: Users, label: 'Characters', color: 'text-blue-400' },
@@ -98,7 +99,7 @@ export default function Sidebar({ view, setView, entities }) {
       <Section title="World" items={worldItems} />
       <Section title="System" items={systemItems} />
       <div className="mt-auto p-2 border-t border-gray-700">
-        <p className="text-[10px] text-gray-600 text-center">v0.2</p>
+        <p className="text-[10px] text-gray-600 text-center">v{packageJson.version}</p>
       </div>
     </aside>
   );
