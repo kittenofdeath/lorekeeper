@@ -1,50 +1,65 @@
-import { useState, useEffect } from 'react';
-import { 
-  Users, Castle, MapPin, Gem, Lightbulb, Calendar, Network, 
-  Eye, EyeOff, Plus, Database, Search
-} from 'lucide-react';
+import { useState, useEffect, lazy, Suspense } from 'react';
+import { Eye, EyeOff, Database, Search } from 'lucide-react';
 import { getAllEntities, getProjectSettings, updateProjectSettings } from './db';
 import { seedGameOfThrones } from './seedData';
 import Sidebar from './components/Sidebar';
 import EntityList from './components/EntityList';
 import EntityEditor from './components/EntityEditor';
-import Timeline from './components/Timeline';
-import RelationshipGraph from './components/RelationshipGraph';
-import InteractionMatrix from './components/InteractionMatrix';
-import MapView from './components/MapView';
-import CausalityView from './components/CausalityView';
-import CharacterArc from './components/CharacterArc';
-import ExportView from './components/ExportView';
-import WritingView from './components/WritingView';
-import KnowledgeTracker from './components/KnowledgeTracker';
-import ForeshadowingTracker from './components/ForeshadowingTracker';
-import MagicRules from './components/MagicRules';
-import ContinuityChecker from './components/ContinuityChecker';
-import AdvancedSearch from './components/AdvancedSearch';
-import NamingTools from './components/NamingTools';
-import LoreHistory from './components/LoreHistory';
 import EventEditor from './components/EventEditor';
-import BackupRestore from './components/BackupRestore';
-import TravelValidator from './components/TravelValidator';
-import PlotStructure from './components/PlotStructure';
-import ThemeTracker from './components/ThemeTracker';
-import WritingGoals from './components/WritingGoals';
-import DialogueLog from './components/DialogueLog';
-import Bestiary from './components/Bestiary';
-import ConlangBuilder from './components/ConlangBuilder';
-import FamilyTree from './components/FamilyTree';
-import CalendarEditor from './components/CalendarEditor';
-import WordFrequency from './components/WordFrequency';
-import ProjectSwitcher from './components/ProjectSwitcher';
-import ManuscriptCompile from './components/ManuscriptCompile';
-import FrameNarrative from './components/FrameNarrative';
-import PoetryEditor from './components/PoetryEditor';
-import CurrencySystem from './components/CurrencySystem';
-import PacingAnalysis from './components/PacingAnalysis';
-import TimelineOrder from './components/TimelineOrder';
-import DialogueDesigner from './components/DialogueDesigner';
-import PersonalityEditor from './components/PersonalityEditor';
-import ArcComparison from './components/ArcComparison';
+
+// Lazy load heavy components (D3 visualizations, large views)
+const Timeline = lazy(() => import('./components/Timeline'));
+const RelationshipGraph = lazy(() => import('./components/RelationshipGraph'));
+const MapView = lazy(() => import('./components/MapView'));
+const CausalityView = lazy(() => import('./components/CausalityView'));
+const FamilyTree = lazy(() => import('./components/FamilyTree'));
+const CharacterArc = lazy(() => import('./components/CharacterArc'));
+const InteractionMatrix = lazy(() => import('./components/InteractionMatrix'));
+const DialogueDesigner = lazy(() => import('./components/DialogueDesigner'));
+
+// Lazy load writing tools
+const WritingView = lazy(() => import('./components/WritingView'));
+const KnowledgeTracker = lazy(() => import('./components/KnowledgeTracker'));
+const ForeshadowingTracker = lazy(() => import('./components/ForeshadowingTracker'));
+const ThemeTracker = lazy(() => import('./components/ThemeTracker'));
+const PlotStructure = lazy(() => import('./components/PlotStructure'));
+const PacingAnalysis = lazy(() => import('./components/PacingAnalysis'));
+const TimelineOrder = lazy(() => import('./components/TimelineOrder'));
+const ManuscriptCompile = lazy(() => import('./components/ManuscriptCompile'));
+const FrameNarrative = lazy(() => import('./components/FrameNarrative'));
+const PoetryEditor = lazy(() => import('./components/PoetryEditor'));
+const DialogueLog = lazy(() => import('./components/DialogueLog'));
+
+// Lazy load world building tools
+const Bestiary = lazy(() => import('./components/Bestiary'));
+const ConlangBuilder = lazy(() => import('./components/ConlangBuilder'));
+const CalendarEditor = lazy(() => import('./components/CalendarEditor'));
+const CurrencySystem = lazy(() => import('./components/CurrencySystem'));
+const MagicRules = lazy(() => import('./components/MagicRules'));
+const NamingTools = lazy(() => import('./components/NamingTools'));
+
+// Lazy load other tools
+const AdvancedSearch = lazy(() => import('./components/AdvancedSearch'));
+const ContinuityChecker = lazy(() => import('./components/ContinuityChecker'));
+const LoreHistory = lazy(() => import('./components/LoreHistory'));
+const TravelValidator = lazy(() => import('./components/TravelValidator'));
+const WritingGoals = lazy(() => import('./components/WritingGoals'));
+const WordFrequency = lazy(() => import('./components/WordFrequency'));
+const PersonalityEditor = lazy(() => import('./components/PersonalityEditor'));
+const ArcComparison = lazy(() => import('./components/ArcComparison'));
+const BackupRestore = lazy(() => import('./components/BackupRestore'));
+const ProjectSwitcher = lazy(() => import('./components/ProjectSwitcher'));
+const ExportView = lazy(() => import('./components/ExportView'));
+
+// Loading fallback
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center h-full">
+    <div className="text-gray-400 flex items-center gap-2">
+      <div className="w-5 h-5 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+      Loading...
+    </div>
+  </div>
+);
 
 function App() {
   const [view, setView] = useState('characters');
@@ -61,10 +76,8 @@ function App() {
     
     // Keyboard shortcuts
     function handleKeyDown(e) {
-      // Ignore if typing in input/textarea
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       
-      // Cmd/Ctrl shortcuts
       if (e.metaKey || e.ctrlKey) {
         switch(e.key) {
           case 'e': e.preventDefault(); setView('writing'); break;
@@ -75,7 +88,6 @@ function App() {
           case 'b': e.preventDefault(); setView('backup'); break;
         }
       }
-      // Number shortcuts for library
       if (!e.metaKey && !e.ctrlKey && !e.altKey) {
         switch(e.key) {
           case '1': setView('characters'); break;
@@ -85,7 +97,6 @@ function App() {
           case '5': setView('concepts'); break;
         }
       }
-      // Escape to close panels
       if (e.key === 'Escape') {
         setSelectedEntityId(null);
         setSelectedEventId(null);
@@ -163,18 +174,106 @@ function App() {
     return true;
   });
 
+  const renderView = () => {
+    const viewProps = {
+      entities: filteredEntities,
+      spoilerMode,
+      onSelectEntity: handleSelectEntity,
+      onSelectEvent: handleSelectEvent,
+    };
+
+    switch (view) {
+      case 'writing':
+        return <WritingView {...viewProps} />;
+      case 'timeline':
+        return <Timeline {...viewProps} />;
+      case 'graph':
+        return <RelationshipGraph {...viewProps} />;
+      case 'interactions':
+        return <InteractionMatrix {...viewProps} />;
+      case 'map':
+        return <MapView {...viewProps} />;
+      case 'causality':
+        return <CausalityView {...viewProps} />;
+      case 'familytree':
+        return <FamilyTree {...viewProps} />;
+      case 'knowledge':
+        return <KnowledgeTracker {...viewProps} />;
+      case 'foreshadowing':
+        return <ForeshadowingTracker entities={filteredEntities} />;
+      case 'magic':
+        return <MagicRules />;
+      case 'continuity':
+        return <ContinuityChecker {...viewProps} />;
+      case 'search':
+        return <AdvancedSearch {...viewProps} />;
+      case 'naming':
+        return <NamingTools entities={filteredEntities} />;
+      case 'history':
+        return <LoreHistory {...viewProps} />;
+      case 'backup':
+        return <BackupRestore onDataChange={loadData} />;
+      case 'travel':
+        return <TravelValidator entities={filteredEntities} />;
+      case 'plot':
+        return <PlotStructure />;
+      case 'themes':
+        return <ThemeTracker entities={filteredEntities} />;
+      case 'goals':
+        return <WritingGoals />;
+      case 'dialogue':
+        return <DialogueLog entities={filteredEntities} />;
+      case 'bestiary':
+        return <Bestiary spoilerMode={spoilerMode} />;
+      case 'conlang':
+        return <ConlangBuilder />;
+      case 'calendar':
+        return <CalendarEditor />;
+      case 'wordfreq':
+        return <WordFrequency />;
+      case 'projects':
+        return <ProjectSwitcher onSwitch={loadData} />;
+      case 'manuscript':
+        return <ManuscriptCompile />;
+      case 'frames':
+        return <FrameNarrative />;
+      case 'poetry':
+        return <PoetryEditor entities={filteredEntities} />;
+      case 'currency':
+        return <CurrencySystem />;
+      case 'pacing':
+        return <PacingAnalysis entities={filteredEntities} />;
+      case 'timelineorder':
+        return <TimelineOrder entities={filteredEntities} />;
+      case 'dialoguedesign':
+        return <DialogueDesigner entities={filteredEntities} />;
+      case 'personality':
+        return <PersonalityEditor {...viewProps} />;
+      case 'arcs':
+        return <ArcComparison entities={filteredEntities} />;
+      case 'export':
+        return <ExportView entities={filteredEntities} spoilerMode={spoilerMode} />;
+      default:
+        return (
+          <EntityList
+            type={typeMap[view]}
+            entities={filteredEntities.filter(e => e.type === typeMap[view])}
+            onSelect={handleSelectEntity}
+            onCreate={handleCreateNew}
+          />
+        );
+    }
+  };
+
   return (
     <div className="flex h-screen bg-gray-900">
-      {/* Sidebar */}
       <Sidebar 
         view={view} 
         setView={(v) => { setView(v); setSelectedEntityId(null); setSelectedEventId(null); }}
         entities={filteredEntities}
       />
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
         <header className="bg-gray-800 border-b border-gray-700 px-6 py-3 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <h1 className="text-xl font-bold text-amber-400">🏰 Lorekeeper</h1>
@@ -211,155 +310,17 @@ function App() {
           </div>
         </header>
 
-        {/* Content Area */}
         <div className="flex-1 flex overflow-hidden">
-          {/* Main View */}
           <div className="flex-1 overflow-auto p-6">
             {isLoading ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-gray-400">Loading...</div>
-              </div>
-            ) : view === 'writing' ? (
-              <WritingView
-                entities={filteredEntities}
-                onSelectEntity={handleSelectEntity}
-              />
-            ) : view === 'timeline' ? (
-              <Timeline 
-                entities={filteredEntities} 
-                spoilerMode={spoilerMode}
-                onSelectEvent={handleSelectEvent}
-                onSelectEntity={handleSelectEntity}
-              />
-            ) : view === 'graph' ? (
-              <RelationshipGraph 
-                entities={filteredEntities}
-                spoilerMode={spoilerMode}
-                onSelectEntity={handleSelectEntity}
-              />
-            ) : view === 'interactions' ? (
-              <InteractionMatrix
-                entities={filteredEntities}
-                spoilerMode={spoilerMode}
-                onSelectEntity={handleSelectEntity}
-                onSelectEvent={handleSelectEvent}
-              />
-            ) : view === 'map' ? (
-              <MapView
-                entities={filteredEntities}
-                spoilerMode={spoilerMode}
-                onSelectEntity={handleSelectEntity}
-                onSelectEvent={handleSelectEvent}
-              />
-            ) : view === 'causality' ? (
-              <CausalityView
-                entities={filteredEntities}
-                spoilerMode={spoilerMode}
-                onSelectEvent={handleSelectEvent}
-              />
-            ) : view === 'knowledge' ? (
-              <KnowledgeTracker
-                entities={filteredEntities}
-                onSelectEntity={handleSelectEntity}
-              />
-            ) : view === 'foreshadowing' ? (
-              <ForeshadowingTracker
-                entities={filteredEntities}
-              />
-            ) : view === 'magic' ? (
-              <MagicRules />
-            ) : view === 'continuity' ? (
-              <ContinuityChecker
-                entities={filteredEntities}
-                onSelectEntity={handleSelectEntity}
-                onSelectEvent={handleSelectEvent}
-              />
-            ) : view === 'search' ? (
-              <AdvancedSearch
-                entities={filteredEntities}
-                onSelectEntity={handleSelectEntity}
-                onSelectEvent={handleSelectEvent}
-              />
-            ) : view === 'naming' ? (
-              <NamingTools
-                entities={filteredEntities}
-              />
-            ) : view === 'history' ? (
-              <LoreHistory
-                entities={filteredEntities}
-                onSelectEntity={handleSelectEntity}
-              />
-            ) : view === 'backup' ? (
-              <BackupRestore
-                onDataChange={loadData}
-              />
-            ) : view === 'travel' ? (
-              <TravelValidator
-                entities={filteredEntities}
-              />
-            ) : view === 'plot' ? (
-              <PlotStructure />
-            ) : view === 'themes' ? (
-              <ThemeTracker
-                entities={filteredEntities}
-              />
-            ) : view === 'goals' ? (
-              <WritingGoals />
-            ) : view === 'dialogue' ? (
-              <DialogueLog
-                entities={filteredEntities}
-              />
-            ) : view === 'bestiary' ? (
-              <Bestiary
-                spoilerMode={spoilerMode}
-              />
-            ) : view === 'conlang' ? (
-              <ConlangBuilder />
-            ) : view === 'familytree' ? (
-              <FamilyTree
-                entities={filteredEntities}
-                onSelectEntity={handleSelectEntity}
-              />
-            ) : view === 'calendar' ? (
-              <CalendarEditor />
-            ) : view === 'wordfreq' ? (
-              <WordFrequency />
-            ) : view === 'projects' ? (
-              <ProjectSwitcher onSwitch={loadData} />
-            ) : view === 'manuscript' ? (
-              <ManuscriptCompile />
-            ) : view === 'frames' ? (
-              <FrameNarrative />
-            ) : view === 'poetry' ? (
-              <PoetryEditor entities={filteredEntities} />
-            ) : view === 'currency' ? (
-              <CurrencySystem />
-            ) : view === 'pacing' ? (
-              <PacingAnalysis entities={filteredEntities} />
-            ) : view === 'timelineorder' ? (
-              <TimelineOrder entities={filteredEntities} />
-            ) : view === 'dialoguedesign' ? (
-              <DialogueDesigner entities={filteredEntities} />
-            ) : view === 'personality' ? (
-              <PersonalityEditor entities={filteredEntities} onSelectEntity={handleSelectEntity} />
-            ) : view === 'arcs' ? (
-              <ArcComparison entities={filteredEntities} />
-            ) : view === 'export' ? (
-              <ExportView
-                entities={filteredEntities}
-                spoilerMode={spoilerMode}
-              />
+              <LoadingSpinner />
             ) : (
-              <EntityList
-                type={typeMap[view]}
-                entities={filteredEntities.filter(e => e.type === typeMap[view])}
-                onSelect={handleSelectEntity}
-                onCreate={handleCreateNew}
-              />
+              <Suspense fallback={<LoadingSpinner />}>
+                {renderView()}
+              </Suspense>
             )}
           </div>
 
-          {/* Side Panel (Editor) */}
           {(selectedEntityId || selectedEventId) && (
             <div className="w-[480px] border-l border-gray-700 bg-gray-800 overflow-auto">
               {selectedEntityId && (
@@ -385,15 +346,16 @@ function App() {
         </div>
       </div>
 
-      {/* Character Arc Modal */}
       {showCharacterArc && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-gray-800 rounded-lg border border-gray-700 w-[800px] max-h-[80vh] overflow-auto">
-            <CharacterArc
-              entity={showCharacterArc}
-              allEntities={entities}
-              onClose={() => setShowCharacterArc(null)}
-            />
+            <Suspense fallback={<LoadingSpinner />}>
+              <CharacterArc
+                entity={showCharacterArc}
+                allEntities={entities}
+                onClose={() => setShowCharacterArc(null)}
+              />
+            </Suspense>
           </div>
         </div>
       )}
