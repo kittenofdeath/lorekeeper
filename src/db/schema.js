@@ -2,7 +2,7 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('lorekeeper');
 
-db.version(4).stores({
+db.version(5).stores({
   // Multi-project support
   projects: '++id, name, isActive, createdAt',
   entities: '++id, projectId, type, name, birthDate, deathDate, isSpoiler',
@@ -46,7 +46,14 @@ db.version(4).stores({
   dialogueNodes: '++id, projectId, characterId, text, isPlayerChoice, isRoot, parentId, order',
   dialogueChoices: '++id, nodeId, text, nextNodeId, condition',
   personalities: '++id, entityId, openness, conscientiousness, extraversion, agreeableness, neuroticism, values, motivations',
-  arcTypes: '++id, projectId, name, pattern, description'
+  arcTypes: '++id, projectId, name, pattern, description',
+  // v5: Quest system
+  quests: '++id, projectId, name, type, status, questGiverId, locationId, factionId, level, isRepeatable, isSpoiler',
+  questObjectives: '++id, questId, type, description, targetId, targetCount, order, isOptional',
+  questRewards: '++id, questId, type, itemId, amount, factionId, reputationChange',
+  questPrerequisites: '++id, questId, prereqType, prereqQuestId, prereqFactionId, prereqLevel, prereqItemId',
+  questStages: '++id, questId, stageNumber, description, dialogueNodeId, locationId',
+  questBranches: '++id, fromQuestId, toQuestId, condition, description'
 });
 
 export default db;

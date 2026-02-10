@@ -1,4 +1,4 @@
-import { Users, Castle, MapPin, Gem, Lightbulb, Calendar, Network, Map, Link2, Download, BookOpen, Brain, Sparkles, Wand2, AlertTriangle, Search, Type, History, Route, Layers, Palette, Target, MessageSquare, Bug, Languages, Database, GitBranch, BarChart3, FileText, FolderOpen, Music, Coins, ArrowDownUp, Boxes, TrendingUp, Gamepad2 } from 'lucide-react';
+import { Users, Castle, MapPin, Gem, Lightbulb, Calendar, Network, Map, Link2, Download, BookOpen, Brain, Sparkles, Wand2, AlertTriangle, Search, Type, History, Route, Layers, Palette, Target, MessageSquare, Bug, Languages, Database, GitBranch, BarChart3, FileText, FolderOpen, Music, Coins, ArrowDownUp, Boxes, TrendingUp, Gamepad2, Scroll, MapPinned } from 'lucide-react';
 import packageJson from '../../package.json';
 
 const navItems = [
@@ -29,10 +29,15 @@ const toolItems = [
   { id: 'continuity', icon: AlertTriangle, label: 'Continuity' },
   { id: 'travel', icon: Route, label: 'Travel' },
   { id: 'dialogue', icon: MessageSquare, label: 'Dialogue' },
-  { id: 'dialoguedesign', icon: Gamepad2, label: 'Game Dialogue' },
   { id: 'personality', icon: Brain, label: 'Personality' },
   { id: 'arcs', icon: TrendingUp, label: 'Arcs' },
   { id: 'search', icon: Search, label: 'Search' },
+];
+
+const gameItems = [
+  { id: 'quests', icon: Scroll, label: 'Quests' },
+  { id: 'questmap', icon: MapPinned, label: 'Quest Map' },
+  { id: 'dialoguedesign', icon: Gamepad2, label: 'Dialogue Tree' },
 ];
 
 const worldItems = [
@@ -96,6 +101,7 @@ export default function Sidebar({ view, setView, entities }) {
       <Section title="Library" items={navItems} showCounts />
       <Section title="Views" items={viewItems} />
       <Section title="Tools" items={toolItems} />
+      <Section title="Game" items={gameItems} />
       <Section title="World" items={worldItems} />
       <Section title="System" items={systemItems} />
       <div className="mt-auto p-2 border-t border-gray-700">

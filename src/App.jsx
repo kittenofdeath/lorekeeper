@@ -51,6 +51,10 @@ const BackupRestore = lazy(() => import('./components/BackupRestore'));
 const ProjectSwitcher = lazy(() => import('./components/ProjectSwitcher'));
 const ExportView = lazy(() => import('./components/ExportView'));
 
+// Lazy load game/quest tools
+const QuestBuilder = lazy(() => import('./components/QuestBuilder'));
+const QuestOverview = lazy(() => import('./components/QuestOverview'));
+
 // Loading fallback
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center h-full">
@@ -247,6 +251,10 @@ function App() {
         return <TimelineOrder entities={filteredEntities} />;
       case 'dialoguedesign':
         return <DialogueDesigner entities={filteredEntities} />;
+      case 'quests':
+        return <QuestBuilder entities={filteredEntities} spoilerMode={spoilerMode} />;
+      case 'questmap':
+        return <QuestOverview entities={filteredEntities} spoilerMode={spoilerMode} onSelectQuest={(id) => console.log('Selected quest:', id)} />;
       case 'personality':
         return <PersonalityEditor {...viewProps} />;
       case 'arcs':
