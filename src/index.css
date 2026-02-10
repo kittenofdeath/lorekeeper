@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+:root {
+  --color-character: #3b82f6;
+  --color-faction: #eab308;
+  --color-location: #22c55e;
+  --color-item: #a855f7;
+  --color-concept: #f97316;
+}
+
+body {
+  @apply bg-gray-900 text-gray-100;
+}
+
+.entity-chip {
+  @apply inline-flex items-center px-2 py-0.5 rounded text-sm font-medium cursor-pointer hover:opacity-80;
+}
+
+.entity-chip.character { @apply bg-blue-500/20 text-blue-300 border border-blue-500/30; }
+.entity-chip.faction { @apply bg-yellow-500/20 text-yellow-300 border border-yellow-500/30; }
+.entity-chip.location { @apply bg-green-500/20 text-green-300 border border-green-500/30; }
+.entity-chip.item { @apply bg-purple-500/20 text-purple-300 border border-purple-500/30; }
+.entity-chip.concept { @apply bg-orange-500/20 text-orange-300 border border-orange-500/30; }
