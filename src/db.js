@@ -2,14 +2,20 @@ import Dexie from 'dexie';
 
 export const db = new Dexie('lorekeeper');
 
-db.version(3).stores({
+db.version(4).stores({
   // Multi-project support
   projects: '++id, name, isActive, createdAt',
   entities: '++id, projectId, type, name, birthDate, deathDate, isSpoiler',
   relationships: '++id, projectId, sourceId, targetId, type, startDate, endDate',
   events: '++id, projectId, title, startDate, endDate, locationId, isSpoiler',
   eventParticipants: '++id, eventId, entityId, role',
-  eventCausality: '++id, causeEventId, effectEventId',
+  eventCausality: '++id, causeEventId, effectEventId, plotlineId',
+  // v4: Plotlines for grouping causality chains
+  plotlines: '++id, projectId, name, color, description',
+  // v4: Custom arc dimensions
+  arcDimensions: '++id, projectId, name, color, icon, description',
+  // v4: Tags on arc points
+  arcPointTags: '++id, arcPointId, tag',
   media: '++id, entityId, eventId, type, filename',
   project: '++id, name, spoilerMode, activeProjectId',
   locationPositions: '++id, locationId, x, y',
@@ -107,12 +113,73 @@ export async function getEventCausality() {
   return db.eventCausality.toArray();
 }
 
-export async function addEventCausality(causeEventId, effectEventId, description = '') {
-  return db.eventCausality.add({ causeEventId, effectEventId, description });
+export async function addEventCausality(causeEventId, effectEventId, description = '', plotlineId = null) {
+  return db.eventCausality.add({ causeEventId, effectEventId, description, plotlineId });
+}
+
+export async function updateEventCausality(id, updates) {
+  return db.eventCausality.update(id, updates);
 }
 
 export async function removeEventCausality(id) {
   return db.eventCausality.delete(id);
+}
+
+// Plotlines helpers (for grouping causality chains)
+export async function getPlotlines() {
+  return db.plotlines.toArray();
+}
+
+export async function addPlotline(name, color = '#eab308', description = '') {
+  return db.plotlines.add({ name, color, description, createdAt: Date.now() });
+}
+
+export async function updatePlotline(id, updates) {
+  return db.plotlines.update(id, updates);
+}
+
+export async function deletePlotline(id) {
+  // Unassign events from this plotline
+  const links = await db.eventCausality.where('plotlineId').equals(id).toArray();
+  for (const link of links) {
+    await db.eventCausality.update(link.id, { plotlineId: null });
+  }
+  return db.plotlines.delete(id);
+}
+
+// Custom arc dimensions helpers
+export async function getArcDimensions() {
+  return db.arcDimensions.toArray();
+}
+
+export async function addArcDimension(name, color = '#eab308', icon = 'TrendingUp', description = '') {
+  return db.arcDimensions.add({ name, color, icon, description, createdAt: Date.now() });
+}
+
+export async function updateArcDimension(id, updates) {
+  return db.arcDimensions.update(id, updates);
+}
+
+export async function deleteArcDimension(id) {
+  // Delete arc points using this dimension
+  const points = await db.arcPoints.where('dimension').equals(String(id)).toArray();
+  for (const p of points) {
+    await db.arcPoints.delete(p.id);
+  }
+  return db.arcDimensions.delete(id);
+}
+
+// Arc point tags helpers
+export async function getArcPointTags(arcPointId) {
+  return db.arcPointTags.where('arcPointId').equals(arcPointId).toArray();
+}
+
+export async function addArcPointTag(arcPointId, tag) {
+  return db.arcPointTags.add({ arcPointId, tag });
+}
+
+export async function removeArcPointTag(id) {
+  return db.arcPointTags.delete(id);
 }
 
 export async function getCausesForEvent(eventId) {

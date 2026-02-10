@@ -1,21 +1,36 @@
 import { useEffect, useRef, useState } from 'react';
 import * as d3 from 'd3';
-import { getArcPointsForEntity, addArcPoint, deleteArcPoint, getEventsForEntity } from '../db';
-import { Plus, Trash2, TrendingUp, Crown, Heart, Swords } from 'lucide-react';
+import { getArcPointsForEntity, addArcPoint, deleteArcPoint, getEventsForEntity, getArcDimensions, addArcDimension, updateArcDimension, deleteArcDimension } from '../db';
+import { Plus, Trash2, TrendingUp, Crown, Heart, Swords, Settings, Edit2, Tag } from 'lucide-react';
 
-const DIMENSIONS = [
-  { id: 'power', label: 'Power/Influence', color: '#eab308', icon: Crown },
-  { id: 'morality', label: 'Morality', color: '#22c55e', icon: Heart },
-  { id: 'danger', label: 'Danger Level', color: '#ef4444', icon: Swords },
+const DEFAULT_DIMENSIONS = [
+  { id: 'power', name: 'Power/Influence', color: '#eab308', icon: 'Crown', isDefault: true },
+  { id: 'morality', name: 'Morality', color: '#22c55e', icon: 'Heart', isDefault: true },
+  { id: 'danger', name: 'Danger Level', color: '#ef4444', icon: 'Swords', isDefault: true },
 ];
+
+const ICON_MAP = { Crown, Heart, Swords, TrendingUp };
+const ICON_OPTIONS = ['Crown', 'Heart', 'Swords', 'TrendingUp'];
+const COLOR_PRESETS = ['#eab308', '#22c55e', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 export default function CharacterArc({ entity, allEntities, onClose }) {
   const chartRef = useRef(null);
   const [arcPoints, setArcPoints] = useState([]);
   const [events, setEvents] = useState([]);
+  const [customDimensions, setCustomDimensions] = useState([]);
   const [selectedDimension, setSelectedDimension] = useState('power');
   const [showAddPoint, setShowAddPoint] = useState(false);
-  const [newPoint, setNewPoint] = useState({ year: '', value: 50 });
+  const [showDimensionManager, setShowDimensionManager] = useState(false);
+  const [newPoint, setNewPoint] = useState({ year: '', value: 50, tags: '' });
+  const [newDimension, setNewDimension] = useState({ name: '', color: '#8b5cf6', icon: 'TrendingUp', description: '' });
+  const [editingDimension, setEditingDimension] = useState(null);
+
+  // Combine default and custom dimensions
+  const allDimensions = [...DEFAULT_DIMENSIONS, ...customDimensions.map(d => ({ ...d, id: String(d.id) }))];
+
+  useEffect(() => {
+    loadDimensions();
+  }, []);
 
   useEffect(() => {
     if (entity?.id) {
@@ -25,7 +40,12 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
 
   useEffect(() => {
     renderChart();
-  }, [arcPoints, events, selectedDimension]);
+  }, [arcPoints, events, selectedDimension, allDimensions]);
+
+  async function loadDimensions() {
+    const dims = await getArcDimensions();
+    setCustomDimensions(dims);
+  }
 
   async function loadData() {
     const points = await getArcPointsForEntity(entity.id);
@@ -37,7 +57,7 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
   async function handleAddPoint() {
     if (newPoint.year) {
       await addArcPoint(entity.id, Number(newPoint.year), newPoint.value, selectedDimension);
-      setNewPoint({ year: '', value: 50 });
+      setNewPoint({ year: '', value: 50, tags: '' });
       setShowAddPoint(false);
       loadData();
     }
@@ -46,6 +66,42 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
   async function handleDeletePoint(pointId) {
     await deleteArcPoint(pointId);
     loadData();
+  }
+
+  async function handleAddDimension() {
+    if (newDimension.name.trim()) {
+      await addArcDimension(newDimension.name.trim(), newDimension.color, newDimension.icon, newDimension.description);
+      setNewDimension({ name: '', color: COLOR_PRESETS[customDimensions.length % COLOR_PRESETS.length], icon: 'TrendingUp', description: '' });
+      loadDimensions();
+    }
+  }
+
+  async function handleUpdateDimension() {
+    if (editingDimension && editingDimension.name.trim()) {
+      await updateArcDimension(editingDimension.id, {
+        name: editingDimension.name.trim(),
+        color: editingDimension.color,
+        icon: editingDimension.icon,
+        description: editingDimension.description
+      });
+      setEditingDimension(null);
+      loadDimensions();
+    }
+  }
+
+  async function handleDeleteDimension(id) {
+    if (confirm('Delete this dimension? All arc points using it will be removed.')) {
+      await deleteArcDimension(id);
+      if (selectedDimension === String(id)) {
+        setSelectedDimension('power');
+      }
+      loadDimensions();
+      loadData();
+    }
+  }
+
+  function getDimension(dimId) {
+    return allDimensions.find(d => d.id === dimId) || { name: dimId, color: '#888', icon: 'TrendingUp' };
   }
 
   function renderChart() {
@@ -61,12 +117,11 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
     const innerWidth = width - margin.left - margin.right;
     const innerHeight = height - margin.top - margin.bottom;
 
-    // Filter points for selected dimension
+    const currentDim = getDimension(selectedDimension);
     const dimensionPoints = arcPoints
       .filter(p => p.dimension === selectedDimension)
       .sort((a, b) => a.year - b.year);
 
-    // Calculate time range
     const allYears = [
       entity.birthDate,
       entity.deathDate,
@@ -87,25 +142,16 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
     const minYear = Math.min(...allYears) - 5;
     const maxYear = Math.max(...allYears) + 5;
 
-    // Scales
-    const xScale = d3.scaleLinear()
-      .domain([minYear, maxYear])
-      .range([0, innerWidth]);
+    const xScale = d3.scaleLinear().domain([minYear, maxYear]).range([0, innerWidth]);
+    const yScale = d3.scaleLinear().domain([0, 100]).range([innerHeight, 0]);
 
-    const yScale = d3.scaleLinear()
-      .domain([0, 100])
-      .range([innerHeight, 0]);
+    const g = svg.append('g').attr('transform', `translate(${margin.left}, ${margin.top})`);
 
-    const g = svg.append('g')
-      .attr('transform', `translate(${margin.left}, ${margin.top})`);
-
-    // Background
     svg.insert('rect', ':first-child')
       .attr('width', width)
       .attr('height', height)
       .attr('fill', '#1a202c');
 
-    // Grid lines
     g.selectAll('.grid-y')
       .data([0, 25, 50, 75, 100])
       .join('line')
@@ -117,7 +163,6 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
       .attr('stroke', '#333')
       .attr('stroke-dasharray', '2,2');
 
-    // Axes
     const xAxis = d3.axisBottom(xScale).ticks(10).tickFormat(d => d);
     const yAxis = d3.axisLeft(yScale).ticks(5);
 
@@ -127,13 +172,8 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
       .selectAll('text')
       .attr('fill', '#888');
 
-    g.append('g')
-      .call(yAxis)
-      .selectAll('text')
-      .attr('fill', '#888');
-
-    g.selectAll('.domain, .tick line')
-      .attr('stroke', '#444');
+    g.append('g').call(yAxis).selectAll('text').attr('fill', '#888');
+    g.selectAll('.domain, .tick line').attr('stroke', '#444');
 
     // Life span area
     if (entity.birthDate) {
@@ -148,7 +188,6 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
         .attr('fill', '#3b82f6')
         .attr('opacity', 0.1);
 
-      // Birth marker
       g.append('line')
         .attr('x1', lifeStart)
         .attr('x2', lifeStart)
@@ -165,7 +204,6 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
         .attr('font-size', '10px')
         .text('Birth');
 
-      // Death marker
       if (entity.deathDate) {
         g.append('line')
           .attr('x1', lifeEnd)
@@ -205,9 +243,9 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
         .attr('fill', '#f59e0b');
     });
 
-    // Draw arc line if we have points
+    // Draw arc line
     if (dimensionPoints.length >= 2) {
-      const dimColor = DIMENSIONS.find(d => d.id === selectedDimension)?.color || '#888';
+      const dimColor = currentDim.color;
       
       const line = d3.line()
         .x(d => xScale(d.year))
@@ -221,7 +259,6 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
         .attr('stroke-width', 3)
         .attr('d', line);
 
-      // Area under the curve
       const area = d3.area()
         .x(d => xScale(d.year))
         .y0(innerHeight)
@@ -237,7 +274,7 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
 
     // Draw arc points
     dimensionPoints.forEach(point => {
-      const dimColor = DIMENSIONS.find(d => d.id === selectedDimension)?.color || '#888';
+      const dimColor = currentDim.color;
       
       g.append('circle')
         .attr('cx', xScale(point.year))
@@ -270,7 +307,7 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
       .attr('text-anchor', 'middle')
       .attr('fill', '#888')
       .attr('font-size', '12px')
-      .text(DIMENSIONS.find(d => d.id === selectedDimension)?.label || 'Value');
+      .text(currentDim.name || 'Value');
   }
 
   if (!entity) return null;
@@ -288,26 +325,142 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
             {entity.deathDate && ` - ${entity.deathDate} (${entity.deathDate - entity.birthDate} years)`}
           </p>
         </div>
-        <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowDimensionManager(!showDimensionManager)}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-sm ${
+              showDimensionManager ? 'bg-purple-500 text-white' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+            }`}
+          >
+            <Settings className="w-4 h-4" />
+            Dimensions
+          </button>
+          <button onClick={onClose} className="text-gray-400 hover:text-white">✕</button>
+        </div>
       </div>
 
+      {/* Dimension manager */}
+      {showDimensionManager && (
+        <div className="mb-4 p-4 bg-gray-800 rounded-lg border border-purple-500/50">
+          <h3 className="text-sm font-medium text-purple-300 mb-3 flex items-center gap-2">
+            <Settings className="w-4 h-4" />
+            Custom Arc Dimensions
+          </h3>
+          <p className="text-xs text-gray-400 mb-3">
+            Create custom dimensions to track any aspect of character development: wealth, knowledge, relationships, corruption, fame, etc.
+          </p>
+          
+          {/* Custom dimensions list */}
+          <div className="space-y-2 mb-3">
+            {customDimensions.map(dim => (
+              <div key={dim.id} className="flex items-center gap-2 p-2 bg-gray-700/50 rounded">
+                {editingDimension?.id === dim.id ? (
+                  <>
+                    <input
+                      type="color"
+                      value={editingDimension.color}
+                      onChange={e => setEditingDimension({ ...editingDimension, color: e.target.value })}
+                      className="w-8 h-8 rounded cursor-pointer"
+                    />
+                    <select
+                      value={editingDimension.icon}
+                      onChange={e => setEditingDimension({ ...editingDimension, icon: e.target.value })}
+                      className="bg-gray-600 border border-gray-500 rounded px-1 py-1 text-sm"
+                    >
+                      {ICON_OPTIONS.map(ico => (
+                        <option key={ico} value={ico}>{ico}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="text"
+                      value={editingDimension.name}
+                      onChange={e => setEditingDimension({ ...editingDimension, name: e.target.value })}
+                      className="flex-1 bg-gray-600 border border-gray-500 rounded px-2 py-1 text-sm"
+                    />
+                    <button onClick={handleUpdateDimension} className="px-2 py-1 bg-green-600 rounded text-sm">Save</button>
+                    <button onClick={() => setEditingDimension(null)} className="px-2 py-1 bg-gray-600 rounded text-sm">Cancel</button>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-4 h-4 rounded" style={{ backgroundColor: dim.color }} />
+                    {ICON_MAP[dim.icon] && (() => {
+                      const Icon = ICON_MAP[dim.icon];
+                      return <Icon className="w-4 h-4" style={{ color: dim.color }} />;
+                    })()}
+                    <span className="flex-1 text-sm">{dim.name}</span>
+                    <span className="text-xs text-gray-500">
+                      {arcPoints.filter(p => p.dimension === String(dim.id)).length} points
+                    </span>
+                    <button onClick={() => setEditingDimension({ ...dim })} className="p-1 hover:bg-gray-600 rounded">
+                      <Edit2 className="w-3 h-3 text-gray-400" />
+                    </button>
+                    <button onClick={() => handleDeleteDimension(dim.id)} className="p-1 hover:bg-gray-600 rounded">
+                      <Trash2 className="w-3 h-3 text-red-400" />
+                    </button>
+                  </>
+                )}
+              </div>
+            ))}
+            {customDimensions.length === 0 && (
+              <p className="text-xs text-gray-500">No custom dimensions yet. Create one below.</p>
+            )}
+          </div>
+
+          {/* Add new dimension */}
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={newDimension.color}
+              onChange={e => setNewDimension({ ...newDimension, color: e.target.value })}
+              className="w-8 h-8 rounded cursor-pointer"
+            />
+            <select
+              value={newDimension.icon}
+              onChange={e => setNewDimension({ ...newDimension, icon: e.target.value })}
+              className="bg-gray-700 border border-gray-600 rounded px-1 py-1 text-sm"
+            >
+              {ICON_OPTIONS.map(ico => (
+                <option key={ico} value={ico}>{ico}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              placeholder="Dimension name (e.g., Wealth, Knowledge)"
+              value={newDimension.name}
+              onChange={e => setNewDimension({ ...newDimension, name: e.target.value })}
+              className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-sm"
+            />
+            <button
+              onClick={handleAddDimension}
+              className="px-3 py-1.5 bg-purple-500 hover:bg-purple-600 rounded text-sm font-medium"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Dimension selector */}
-      <div className="flex gap-2 mb-4">
-        {DIMENSIONS.map(dim => (
-          <button
-            key={dim.id}
-            onClick={() => setSelectedDimension(dim.id)}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-              selectedDimension === dim.id
-                ? 'text-gray-900'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-            }`}
-            style={{ backgroundColor: selectedDimension === dim.id ? dim.color : undefined }}
-          >
-            <dim.icon className="w-4 h-4" />
-            {dim.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {allDimensions.map(dim => {
+          const Icon = ICON_MAP[dim.icon] || TrendingUp;
+          return (
+            <button
+              key={dim.id}
+              onClick={() => setSelectedDimension(dim.id)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                selectedDimension === dim.id
+                  ? 'text-gray-900 font-medium'
+                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              }`}
+              style={{ backgroundColor: selectedDimension === dim.id ? dim.color : undefined }}
+            >
+              <Icon className="w-4 h-4" />
+              {dim.name}
+              {!dim.isDefault && <span className="text-xs opacity-60">(custom)</span>}
+            </button>
+          );
+        })}
       </div>
 
       {/* Chart */}
@@ -318,7 +471,7 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
       {/* Add point controls */}
       <div className="flex items-center gap-4 mb-4">
         {showAddPoint ? (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <input
               type="number"
               placeholder="Year"
@@ -335,6 +488,13 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
               className="w-32"
             />
             <span className="text-sm w-8">{newPoint.value}</span>
+            <input
+              type="text"
+              placeholder="Tags (optional, comma-separated)"
+              value={newPoint.tags}
+              onChange={e => setNewPoint({ ...newPoint, tags: e.target.value })}
+              className="w-48 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-sm"
+            />
             <button
               onClick={handleAddPoint}
               className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-gray-900 rounded text-sm"
@@ -359,10 +519,46 @@ export default function CharacterArc({ entity, allEntities, onClose }) {
         )}
       </div>
 
+      {/* Arc points list for current dimension */}
+      <div className="mb-4">
+        <h3 className="text-sm font-medium text-gray-300 mb-2">
+          Points for {getDimension(selectedDimension).name}
+        </h3>
+        <div className="space-y-1 max-h-32 overflow-auto">
+          {arcPoints.filter(p => p.dimension === selectedDimension).length === 0 ? (
+            <p className="text-sm text-gray-500">No points yet. Add one above.</p>
+          ) : (
+            arcPoints
+              .filter(p => p.dimension === selectedDimension)
+              .sort((a, b) => a.year - b.year)
+              .map(point => (
+                <div key={point.id} className="text-sm flex items-center gap-2 p-2 bg-gray-700/50 rounded">
+                  <span className="text-gray-400">Year {point.year}:</span>
+                  <span className="font-medium" style={{ color: getDimension(selectedDimension).color }}>
+                    {point.value}/100
+                  </span>
+                  {point.tags && (
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      <Tag className="w-3 h-3" />
+                      {point.tags}
+                    </span>
+                  )}
+                  <button
+                    onClick={() => handleDeletePoint(point.id)}
+                    className="ml-auto p-1 hover:bg-gray-600 rounded"
+                  >
+                    <Trash2 className="w-3 h-3 text-gray-400" />
+                  </button>
+                </div>
+              ))
+          )}
+        </div>
+      </div>
+
       {/* Events list */}
       <div>
         <h3 className="text-sm font-medium text-gray-300 mb-2">Key Events</h3>
-        <div className="space-y-1 max-h-40 overflow-auto">
+        <div className="space-y-1 max-h-32 overflow-auto">
           {events.length === 0 ? (
             <p className="text-sm text-gray-500">No events involving this character</p>
           ) : (

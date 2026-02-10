@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { X, Save, Trash2, Plus, UserPlus } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Save, Trash2, Plus, UserPlus, Maximize2, Minimize2 } from 'lucide-react';
 import { 
   getEvent, createEvent, updateEvent, deleteEvent,
   getEventParticipants, addEventParticipant, removeEventParticipant
@@ -16,12 +16,15 @@ export default function EventEditor({ eventId, onClose, onSave, allEntities }) {
   const [event, setEvent] = useState({
     title: '',
     description: '',
+    fullContent: '',
     startDate: '',
     endDate: '',
     locationId: null,
     tags: [],
     isSpoiler: false
   });
+  const [showFullContent, setShowFullContent] = useState(false);
+  const descRef = useRef(null);
   const [participants, setParticipants] = useState([]);
   const [newTag, setNewTag] = useState('');
   const [showAddParticipant, setShowAddParticipant] = useState(false);
@@ -37,6 +40,10 @@ export default function EventEditor({ eventId, onClose, onSave, allEntities }) {
     const e = await getEvent(eventId);
     if (e) {
       setEvent(e);
+      // Auto-show full content panel if there's content
+      if (e.fullContent) {
+        setShowFullContent(true);
+      }
       const parts = await getEventParticipants(eventId);
       setParticipants(parts);
     }
@@ -48,6 +55,7 @@ export default function EventEditor({ eventId, onClose, onSave, allEntities }) {
       startDate: event.startDate ? Number(event.startDate) : null,
       endDate: event.endDate ? Number(event.endDate) : null,
       locationId: event.locationId ? Number(event.locationId) : null,
+      fullContent: event.fullContent || '',
     };
     
     if (eventId) {
@@ -168,15 +176,62 @@ export default function EventEditor({ eventId, onClose, onSave, allEntities }) {
 
         {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Description</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-sm font-medium text-gray-300">Description</label>
+            <button
+              type="button"
+              onClick={() => setShowFullContent(!showFullContent)}
+              className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1"
+            >
+              {showFullContent ? <Minimize2 className="w-3 h-3" /> : <Maximize2 className="w-3 h-3" />}
+              {showFullContent ? 'Compact' : 'Full Content'}
+            </button>
+          </div>
           <textarea
+            ref={descRef}
             value={event.description || ''}
-            onChange={e => setEvent({ ...event, description: e.target.value })}
-            rows={4}
-            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500 resize-none"
-            placeholder="What happened..."
+            onChange={e => {
+              setEvent({ ...event, description: e.target.value });
+              // Auto-expand
+              if (descRef.current) {
+                descRef.current.style.height = 'auto';
+                descRef.current.style.height = Math.min(descRef.current.scrollHeight, 200) + 'px';
+              }
+            }}
+            rows={3}
+            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500 resize-y min-h-[76px]"
+            placeholder="Brief summary of what happened..."
           />
         </div>
+
+        {/* Full Content (for large events) */}
+        {showFullContent && (
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">
+              Full Content
+              <span className="text-gray-500 font-normal ml-2">
+                (detailed writeup for major events)
+              </span>
+            </label>
+            <textarea
+              value={event.fullContent || ''}
+              onChange={e => setEvent({ ...event, fullContent: e.target.value })}
+              rows={12}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500 resize-y font-mono text-sm"
+              placeholder="Write the full detailed account of this event here. Use this for complex events like major battles, political maneuvers, or pivotal scenes that need more than a brief summary.
+
+You can include:
+- Detailed sequence of events
+- Character motivations and actions
+- Environmental details
+- Dialogue excerpts
+- Consequences and aftermath"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              {(event.fullContent || '').length} characters | ~{Math.round((event.fullContent || '').split(/\s+/).filter(Boolean).length)} words
+            </p>
+          </div>
+        )}
 
         {/* Tags */}
         <div>
