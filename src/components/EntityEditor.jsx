@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
-import { X, Save, Trash2, Plus, Link } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { X, Save, Trash2, Plus, Link, Image, TrendingUp, Upload } from 'lucide-react';
 import { 
   getEntity, createEntity, updateEntity, deleteEntity,
   getRelationshipsForEntity, createRelationship, deleteRelationship,
-  getEventsForEntity
+  getEventsForEntity, getMediaForEntity, addMedia, deleteMedia
 } from '../db';
 
 const relationshipTypes = [
@@ -15,7 +15,7 @@ const relationshipTypes = [
   { value: 'controls', label: 'Controls' },
 ];
 
-export default function EntityEditor({ entityId, entityType, onClose, onSave, allEntities }) {
+export default function EntityEditor({ entityId, entityType, onClose, onSave, allEntities, onShowArc }) {
   const [entity, setEntity] = useState({
     type: entityType,
     name: '',
@@ -29,9 +29,11 @@ export default function EntityEditor({ entityId, entityType, onClose, onSave, al
   });
   const [relationships, setRelationships] = useState([]);
   const [events, setEvents] = useState([]);
+  const [media, setMedia] = useState([]);
   const [newAlias, setNewAlias] = useState('');
   const [showAddRelationship, setShowAddRelationship] = useState(false);
   const [newRel, setNewRel] = useState({ targetId: '', type: 'ally', subtype: '' });
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     if (entityId) {
@@ -47,7 +49,34 @@ export default function EntityEditor({ entityId, entityType, onClose, onSave, al
       setRelationships(rels);
       const evts = await getEventsForEntity(entityId);
       setEvents(evts);
+      const med = await getMediaForEntity(entityId);
+      setMedia(med);
     }
+  }
+
+  async function handleMediaUpload(e) {
+    const file = e.target.files[0];
+    if (file && entityId) {
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        await addMedia({
+          entityId,
+          type: file.type.startsWith('image/') ? 'image' : 'document',
+          filename: file.name,
+          data: event.target.result,
+          mimeType: file.type
+        });
+        const med = await getMediaForEntity(entityId);
+        setMedia(med);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  async function handleDeleteMedia(mediaId) {
+    await deleteMedia(mediaId);
+    const med = await getMediaForEntity(entityId);
+    setMedia(med);
   }
 
   async function handleSave() {
@@ -125,22 +154,51 @@ export default function EntityEditor({ entityId, entityType, onClose, onSave, al
         <h2 className="text-xl font-bold">
           {entityId ? 'Edit' : 'New'} {entityType}
         </h2>
-        <button onClick={onClose} className="p-2 hover:bg-gray-700 rounded-lg">
-          <X className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          {entityId && entityType === 'character' && onShowArc && (
+            <button
+              onClick={() => onShowArc(entity)}
+              className="flex items-center gap-1 px-2 py-1 bg-amber-500/20 text-amber-300 rounded text-sm hover:bg-amber-500/30"
+            >
+              <TrendingUp className="w-4 h-4" />
+              Arc
+            </button>
+          )}
+          <button onClick={onClose} className="p-2 hover:bg-gray-700 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       <div className="space-y-5">
-        {/* Name */}
-        <div>
-          <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
-          <input
-            type="text"
-            value={entity.name}
-            onChange={e => setEntity({ ...entity, name: e.target.value })}
-            className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500"
-            placeholder="Enter name..."
-          />
+        {/* Avatar */}
+        <div className="flex items-start gap-4">
+          <div className="w-20 h-20 bg-gray-700 rounded-lg overflow-hidden flex-shrink-0">
+            {entity.avatar ? (
+              <img src={entity.avatar} alt={entity.name} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-500 text-2xl">
+                {entity.name?.[0]?.toUpperCase() || '?'}
+              </div>
+            )}
+          </div>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-300 mb-1">Name</label>
+            <input
+              type="text"
+              value={entity.name}
+              onChange={e => setEntity({ ...entity, name: e.target.value })}
+              className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500"
+              placeholder="Enter name..."
+            />
+            <input
+              type="text"
+              value={entity.avatar || ''}
+              onChange={e => setEntity({ ...entity, avatar: e.target.value })}
+              className="w-full mt-2 bg-gray-700 border border-gray-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-amber-500"
+              placeholder="Avatar image URL..."
+            />
+          </div>
         </div>
 
         {/* Aliases */}
@@ -171,25 +229,80 @@ export default function EntityEditor({ entityId, entityType, onClose, onSave, al
 
         {/* Birth/Death Dates (for characters) */}
         {entityType === 'character' && (
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Born (Year)</label>
-              <input
-                type="number"
-                value={entity.birthDate || ''}
-                onChange={e => setEntity({ ...entity, birthDate: e.target.value })}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500"
-              />
+          <>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Born (Year)</label>
+                <input
+                  type="number"
+                  value={entity.birthDate || ''}
+                  onChange={e => setEntity({ ...entity, birthDate: e.target.value })}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Died (Year)</label>
+                <input
+                  type="number"
+                  value={entity.deathDate || ''}
+                  onChange={e => setEntity({ ...entity, deathDate: e.target.value })}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500"
+                />
+              </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Died (Year)</label>
-              <input
-                type="number"
-                value={entity.deathDate || ''}
-                onChange={e => setEntity({ ...entity, deathDate: e.target.value })}
-                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500"
+              <label className="block text-sm font-medium text-gray-300 mb-1">Voice Notes</label>
+              <textarea
+                value={entity.voiceNotes || ''}
+                onChange={e => setEntity({ ...entity, voiceNotes: e.target.value })}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500 resize-none"
+                rows={2}
+                placeholder="Speech patterns, verbal tics, accent, common phrases..."
               />
             </div>
+            {/* Arc Closure (for deceased characters) */}
+            {entity.deathDate && (
+              <div className="p-3 bg-gray-700/50 rounded-lg border border-gray-600">
+                <label className="block text-sm font-medium text-gray-300 mb-1">Arc Closure</label>
+                <textarea
+                  value={entity.arcClosure || ''}
+                  onChange={e => setEntity({ ...entity, arcClosure: e.target.value })}
+                  className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500 resize-none"
+                  rows={2}
+                  placeholder="What storylines ended with this character? Unresolved plots?"
+                />
+                <input
+                  type="text"
+                  value={entity.lastWords || ''}
+                  onChange={e => setEntity({ ...entity, lastWords: e.target.value })}
+                  className="w-full mt-2 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                  placeholder="Last words..."
+                />
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Heraldry for factions */}
+        {entityType === 'faction' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Heraldry / Sigil</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={entity.heraldry || ''}
+                onChange={e => setEntity({ ...entity, heraldry: e.target.value })}
+                className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                placeholder="Describe: 'A grey direwolf on white' or paste image URL"
+              />
+            </div>
+            <input
+              type="text"
+              value={entity.motto || ''}
+              onChange={e => setEntity({ ...entity, motto: e.target.value })}
+              className="w-full mt-2 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+              placeholder="House words / Motto..."
+            />
           </div>
         )}
 
@@ -230,6 +343,53 @@ export default function EntityEditor({ entityId, entityType, onClose, onSave, al
           />
           <span className="text-sm">Mark as Spoiler</span>
         </label>
+
+        {/* Media Gallery (only if editing existing) */}
+        {entityId && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-gray-300 flex items-center gap-2">
+                <Image className="w-4 h-4" /> Media Gallery
+              </label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleMediaUpload}
+                className="hidden"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-sm text-amber-400 hover:text-amber-300 flex items-center gap-1"
+              >
+                <Upload className="w-4 h-4" /> Upload
+              </button>
+            </div>
+            {media.length === 0 ? (
+              <p className="text-sm text-gray-500">No media attached</p>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {media.map(m => (
+                  <div key={m.id} className="relative group">
+                    {m.type === 'image' && m.data && (
+                      <img 
+                        src={m.data} 
+                        alt={m.filename}
+                        className="w-full h-20 object-cover rounded"
+                      />
+                    )}
+                    <button
+                      onClick={() => handleDeleteMedia(m.id)}
+                      className="absolute top-1 right-1 p-1 bg-red-500 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Relationships (only if editing existing) */}
         {entityId && (

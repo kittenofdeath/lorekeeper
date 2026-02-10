@@ -1,4 +1,4 @@
-import { Users, Castle, MapPin, Gem, Lightbulb, Calendar, Network } from 'lucide-react';
+import { Users, Castle, MapPin, Gem, Lightbulb, Calendar, Network, Map, Link2, Download, BookOpen, Brain, Sparkles, Wand2, AlertTriangle, Search, Type, History, Route, Layers, Palette, Target, MessageSquare, Bug, Languages, Database, GitBranch, BarChart3, FileText, FolderOpen, Music, Coins, ArrowDownUp, Boxes, TrendingUp, Gamepad2 } from 'lucide-react';
 
 const navItems = [
   { id: 'characters', icon: Users, label: 'Characters', color: 'text-blue-400' },
@@ -9,8 +9,49 @@ const navItems = [
 ];
 
 const viewItems = [
+  { id: 'writing', icon: BookOpen, label: 'Writing' },
   { id: 'timeline', icon: Calendar, label: 'Timeline' },
-  { id: 'graph', icon: Network, label: 'Relationships' },
+  { id: 'timelineorder', icon: ArrowDownUp, label: 'Order' },
+  { id: 'graph', icon: Network, label: 'Relations' },
+  { id: 'familytree', icon: GitBranch, label: 'Family' },
+  { id: 'map', icon: Map, label: 'Map' },
+  { id: 'causality', icon: Link2, label: 'Cause' },
+  { id: 'plot', icon: Layers, label: 'Plot' },
+  { id: 'frames', icon: Boxes, label: 'Frames' },
+];
+
+const toolItems = [
+  { id: 'knowledge', icon: Brain, label: 'POV' },
+  { id: 'foreshadowing', icon: Sparkles, label: 'Foreshadow' },
+  { id: 'themes', icon: Palette, label: 'Themes' },
+  { id: 'magic', icon: Wand2, label: 'Magic' },
+  { id: 'continuity', icon: AlertTriangle, label: 'Continuity' },
+  { id: 'travel', icon: Route, label: 'Travel' },
+  { id: 'dialogue', icon: MessageSquare, label: 'Dialogue' },
+  { id: 'dialoguedesign', icon: Gamepad2, label: 'Game Dialogue' },
+  { id: 'personality', icon: Brain, label: 'Personality' },
+  { id: 'arcs', icon: TrendingUp, label: 'Arcs' },
+  { id: 'search', icon: Search, label: 'Search' },
+];
+
+const worldItems = [
+  { id: 'bestiary', icon: Bug, label: 'Bestiary' },
+  { id: 'conlang', icon: Languages, label: 'Languages' },
+  { id: 'naming', icon: Type, label: 'Naming' },
+  { id: 'calendar', icon: Calendar, label: 'Calendar' },
+  { id: 'poetry', icon: Music, label: 'Poetry' },
+  { id: 'currency', icon: Coins, label: 'Currency' },
+];
+
+const systemItems = [
+  { id: 'goals', icon: Target, label: 'Goals' },
+  { id: 'pacing', icon: BarChart3, label: 'Pacing' },
+  { id: 'wordfreq', icon: BarChart3, label: 'Words' },
+  { id: 'manuscript', icon: FileText, label: 'Compile' },
+  { id: 'history', icon: History, label: 'History' },
+  { id: 'projects', icon: FolderOpen, label: 'Projects' },
+  { id: 'backup', icon: Database, label: 'Backup' },
+  { id: 'export', icon: Download, label: 'Export' },
 ];
 
 export default function Sidebar({ view, setView, entities }) {
@@ -24,55 +65,40 @@ export default function Sidebar({ view, setView, entities }) {
     concepts: 'concept'
   };
 
-  return (
-    <aside className="w-56 bg-gray-800 border-r border-gray-700 flex flex-col">
-      <div className="p-4">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Library</h2>
-        <nav className="space-y-1">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setView(item.id)}
-              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-colors ${
-                view === item.id 
-                  ? 'bg-gray-700 text-white' 
-                  : 'text-gray-300 hover:bg-gray-700/50'
-              }`}
-            >
-              <span className="flex items-center gap-3">
-                <item.icon className={`w-4 h-4 ${item.color}`} />
-                {item.label}
-              </span>
-              <span className="text-xs text-gray-500">{getCounts(typeMap[item.id])}</span>
-            </button>
-          ))}
-        </nav>
-      </div>
-
-      <div className="p-4 border-t border-gray-700">
-        <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Views</h2>
-        <nav className="space-y-1">
-          {viewItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setView(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                view === item.id 
-                  ? 'bg-gray-700 text-white' 
-                  : 'text-gray-300 hover:bg-gray-700/50'
-              }`}
-            >
-              <item.icon className="w-4 h-4" />
+  const Section = ({ title, items, showCounts = false }) => (
+    <div className="px-2 py-1.5 border-b border-gray-700/50">
+      <h2 className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1 px-1">{title}</h2>
+      <nav className="space-y-px">
+        {items.map(item => (
+          <button
+            key={item.id}
+            onClick={() => setView(item.id)}
+            className={`w-full flex items-center justify-between px-2 py-1 rounded text-xs transition-colors ${
+              view === item.id 
+                ? 'bg-amber-500/20 text-amber-300' 
+                : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
+            }`}
+          >
+            <span className="flex items-center gap-1.5">
+              <item.icon className={`w-3 h-3 ${item.color || ''}`} />
               {item.label}
-            </button>
-          ))}
-        </nav>
-      </div>
+            </span>
+            {showCounts && <span className="text-[10px] text-gray-600">{getCounts(typeMap[item.id])}</span>}
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
 
-      <div className="mt-auto p-4 border-t border-gray-700">
-        <p className="text-xs text-gray-500 text-center">
-          Lorekeeper v0.1
-        </p>
+  return (
+    <aside className="w-40 bg-gray-800 border-r border-gray-700 flex flex-col text-sm overflow-y-auto">
+      <Section title="Library" items={navItems} showCounts />
+      <Section title="Views" items={viewItems} />
+      <Section title="Tools" items={toolItems} />
+      <Section title="World" items={worldItems} />
+      <Section title="System" items={systemItems} />
+      <div className="mt-auto p-2 border-t border-gray-700">
+        <p className="text-[10px] text-gray-600 text-center">v0.2</p>
       </div>
     </aside>
   );

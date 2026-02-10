@@ -10,12 +10,47 @@ import EntityList from './components/EntityList';
 import EntityEditor from './components/EntityEditor';
 import Timeline from './components/Timeline';
 import RelationshipGraph from './components/RelationshipGraph';
+import InteractionMatrix from './components/InteractionMatrix';
+import MapView from './components/MapView';
+import CausalityView from './components/CausalityView';
+import CharacterArc from './components/CharacterArc';
+import ExportView from './components/ExportView';
+import WritingView from './components/WritingView';
+import KnowledgeTracker from './components/KnowledgeTracker';
+import ForeshadowingTracker from './components/ForeshadowingTracker';
+import MagicRules from './components/MagicRules';
+import ContinuityChecker from './components/ContinuityChecker';
+import AdvancedSearch from './components/AdvancedSearch';
+import NamingTools from './components/NamingTools';
+import LoreHistory from './components/LoreHistory';
 import EventEditor from './components/EventEditor';
+import BackupRestore from './components/BackupRestore';
+import TravelValidator from './components/TravelValidator';
+import PlotStructure from './components/PlotStructure';
+import ThemeTracker from './components/ThemeTracker';
+import WritingGoals from './components/WritingGoals';
+import DialogueLog from './components/DialogueLog';
+import Bestiary from './components/Bestiary';
+import ConlangBuilder from './components/ConlangBuilder';
+import FamilyTree from './components/FamilyTree';
+import CalendarEditor from './components/CalendarEditor';
+import WordFrequency from './components/WordFrequency';
+import ProjectSwitcher from './components/ProjectSwitcher';
+import ManuscriptCompile from './components/ManuscriptCompile';
+import FrameNarrative from './components/FrameNarrative';
+import PoetryEditor from './components/PoetryEditor';
+import CurrencySystem from './components/CurrencySystem';
+import PacingAnalysis from './components/PacingAnalysis';
+import TimelineOrder from './components/TimelineOrder';
+import DialogueDesigner from './components/DialogueDesigner';
+import PersonalityEditor from './components/PersonalityEditor';
+import ArcComparison from './components/ArcComparison';
 
 function App() {
   const [view, setView] = useState('characters');
   const [selectedEntityId, setSelectedEntityId] = useState(null);
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const [showCharacterArc, setShowCharacterArc] = useState(null);
   const [spoilerMode, setSpoilerMode] = useState(true);
   const [entities, setEntities] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -23,6 +58,43 @@ function App() {
 
   useEffect(() => {
     loadData();
+    
+    // Keyboard shortcuts
+    function handleKeyDown(e) {
+      // Ignore if typing in input/textarea
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      
+      // Cmd/Ctrl shortcuts
+      if (e.metaKey || e.ctrlKey) {
+        switch(e.key) {
+          case 'e': e.preventDefault(); setView('writing'); break;
+          case 't': e.preventDefault(); setView('timeline'); break;
+          case 'g': e.preventDefault(); setView('graph'); break;
+          case 'm': e.preventDefault(); setView('map'); break;
+          case 'f': e.preventDefault(); setView('search'); break;
+          case 'b': e.preventDefault(); setView('backup'); break;
+        }
+      }
+      // Number shortcuts for library
+      if (!e.metaKey && !e.ctrlKey && !e.altKey) {
+        switch(e.key) {
+          case '1': setView('characters'); break;
+          case '2': setView('factions'); break;
+          case '3': setView('locations'); break;
+          case '4': setView('items'); break;
+          case '5': setView('concepts'); break;
+        }
+      }
+      // Escape to close panels
+      if (e.key === 'Escape') {
+        setSelectedEntityId(null);
+        setSelectedEventId(null);
+        setShowCharacterArc(null);
+      }
+    }
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   async function loadData() {
@@ -147,6 +219,11 @@ function App() {
               <div className="flex items-center justify-center h-full">
                 <div className="text-gray-400">Loading...</div>
               </div>
+            ) : view === 'writing' ? (
+              <WritingView
+                entities={filteredEntities}
+                onSelectEntity={handleSelectEntity}
+              />
             ) : view === 'timeline' ? (
               <Timeline 
                 entities={filteredEntities} 
@@ -159,6 +236,118 @@ function App() {
                 entities={filteredEntities}
                 spoilerMode={spoilerMode}
                 onSelectEntity={handleSelectEntity}
+              />
+            ) : view === 'interactions' ? (
+              <InteractionMatrix
+                entities={filteredEntities}
+                spoilerMode={spoilerMode}
+                onSelectEntity={handleSelectEntity}
+                onSelectEvent={handleSelectEvent}
+              />
+            ) : view === 'map' ? (
+              <MapView
+                entities={filteredEntities}
+                spoilerMode={spoilerMode}
+                onSelectEntity={handleSelectEntity}
+                onSelectEvent={handleSelectEvent}
+              />
+            ) : view === 'causality' ? (
+              <CausalityView
+                entities={filteredEntities}
+                spoilerMode={spoilerMode}
+                onSelectEvent={handleSelectEvent}
+              />
+            ) : view === 'knowledge' ? (
+              <KnowledgeTracker
+                entities={filteredEntities}
+                onSelectEntity={handleSelectEntity}
+              />
+            ) : view === 'foreshadowing' ? (
+              <ForeshadowingTracker
+                entities={filteredEntities}
+              />
+            ) : view === 'magic' ? (
+              <MagicRules />
+            ) : view === 'continuity' ? (
+              <ContinuityChecker
+                entities={filteredEntities}
+                onSelectEntity={handleSelectEntity}
+                onSelectEvent={handleSelectEvent}
+              />
+            ) : view === 'search' ? (
+              <AdvancedSearch
+                entities={filteredEntities}
+                onSelectEntity={handleSelectEntity}
+                onSelectEvent={handleSelectEvent}
+              />
+            ) : view === 'naming' ? (
+              <NamingTools
+                entities={filteredEntities}
+              />
+            ) : view === 'history' ? (
+              <LoreHistory
+                entities={filteredEntities}
+                onSelectEntity={handleSelectEntity}
+              />
+            ) : view === 'backup' ? (
+              <BackupRestore
+                onDataChange={loadData}
+              />
+            ) : view === 'travel' ? (
+              <TravelValidator
+                entities={filteredEntities}
+              />
+            ) : view === 'plot' ? (
+              <PlotStructure />
+            ) : view === 'themes' ? (
+              <ThemeTracker
+                entities={filteredEntities}
+              />
+            ) : view === 'goals' ? (
+              <WritingGoals />
+            ) : view === 'dialogue' ? (
+              <DialogueLog
+                entities={filteredEntities}
+              />
+            ) : view === 'bestiary' ? (
+              <Bestiary
+                spoilerMode={spoilerMode}
+              />
+            ) : view === 'conlang' ? (
+              <ConlangBuilder />
+            ) : view === 'familytree' ? (
+              <FamilyTree
+                entities={filteredEntities}
+                onSelectEntity={handleSelectEntity}
+              />
+            ) : view === 'calendar' ? (
+              <CalendarEditor />
+            ) : view === 'wordfreq' ? (
+              <WordFrequency />
+            ) : view === 'projects' ? (
+              <ProjectSwitcher onSwitch={loadData} />
+            ) : view === 'manuscript' ? (
+              <ManuscriptCompile />
+            ) : view === 'frames' ? (
+              <FrameNarrative />
+            ) : view === 'poetry' ? (
+              <PoetryEditor entities={filteredEntities} />
+            ) : view === 'currency' ? (
+              <CurrencySystem />
+            ) : view === 'pacing' ? (
+              <PacingAnalysis entities={filteredEntities} />
+            ) : view === 'timelineorder' ? (
+              <TimelineOrder entities={filteredEntities} />
+            ) : view === 'dialoguedesign' ? (
+              <DialogueDesigner entities={filteredEntities} />
+            ) : view === 'personality' ? (
+              <PersonalityEditor entities={filteredEntities} onSelectEntity={handleSelectEntity} />
+            ) : view === 'arcs' ? (
+              <ArcComparison entities={filteredEntities} />
+            ) : view === 'export' ? (
+              <ExportView
+                entities={filteredEntities}
+                spoilerMode={spoilerMode}
               />
             ) : (
               <EntityList
@@ -180,6 +369,7 @@ function App() {
                   onClose={handleCloseEditor}
                   onSave={handleCloseEditor}
                   allEntities={entities}
+                  onShowArc={(entity) => setShowCharacterArc(entity)}
                 />
               )}
               {selectedEventId && (
@@ -194,6 +384,19 @@ function App() {
           )}
         </div>
       </div>
+
+      {/* Character Arc Modal */}
+      {showCharacterArc && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg border border-gray-700 w-[800px] max-h-[80vh] overflow-auto">
+            <CharacterArc
+              entity={showCharacterArc}
+              allEntities={entities}
+              onClose={() => setShowCharacterArc(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -84,7 +84,9 @@ export default function EntityList({ type, entities, onSelect, onCreate }) {
                   {entity.birthDate && (
                     <p className="text-xs text-gray-500 mt-1">
                       {entity.birthDate}
-                      {entity.deathDate ? ` - ${entity.deathDate}` : ' - present'}
+                      {entity.deathDate 
+                        ? ` - ${entity.deathDate} (${entity.deathDate - entity.birthDate} years)` 
+                        : ' - present'}
                     </p>
                   )}
                   {entity.attributes?.title && (
