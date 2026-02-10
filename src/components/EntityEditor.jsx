@@ -283,27 +283,71 @@ export default function EntityEditor({ entityId, entityType, onClose, onSave, al
           </>
         )}
 
-        {/* Heraldry for factions */}
+        {/* Faction-specific fields */}
         {entityType === 'faction' && (
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Heraldry / Sigil</label>
-            <div className="flex gap-2">
+          <>
+            {/* Parent Faction (hierarchy) */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Parent Group / Hierarchy</label>
+              <select
+                value={entity.parentFactionId || ''}
+                onChange={e => setEntity({ ...entity, parentFactionId: e.target.value ? Number(e.target.value) : null })}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500"
+              >
+                <option value="">None (top-level)</option>
+                {allEntities
+                  .filter(e => e.type === 'faction' && e.id !== entityId)
+                  .map(f => (
+                    <option key={f.id} value={f.id}>{f.name}</option>
+                  ))
+                }
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                e.g., House Stark → The North, The North → Westeros
+              </p>
+            </div>
+
+            {/* Faction Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Faction Type</label>
+              <select
+                value={entity.factionType || 'organization'}
+                onChange={e => setEntity({ ...entity, factionType: e.target.value })}
+                className="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 focus:outline-none focus:border-amber-500"
+              >
+                <option value="organization">Organization</option>
+                <option value="house">Noble House / Family</option>
+                <option value="kingdom">Kingdom / Nation</option>
+                <option value="region">Region / Territory</option>
+                <option value="race">Race / Species</option>
+                <option value="religion">Religion / Faith</option>
+                <option value="guild">Guild / Order</option>
+                <option value="tribe">Tribe / Clan</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            {/* Heraldry / Sigil */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Heraldry / Sigil</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={entity.heraldry || ''}
+                  onChange={e => setEntity({ ...entity, heraldry: e.target.value })}
+                  className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                  placeholder="Describe: 'A grey direwolf on white' or paste image URL"
+                />
+              </div>
               <input
                 type="text"
-                value={entity.heraldry || ''}
-                onChange={e => setEntity({ ...entity, heraldry: e.target.value })}
-                className="flex-1 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
-                placeholder="Describe: 'A grey direwolf on white' or paste image URL"
+                value={entity.motto || ''}
+                onChange={e => setEntity({ ...entity, motto: e.target.value })}
+                className="w-full mt-2 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
+                placeholder="House words / Motto..."
               />
             </div>
-            <input
-              type="text"
-              value={entity.motto || ''}
-              onChange={e => setEntity({ ...entity, motto: e.target.value })}
-              className="w-full mt-2 bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500"
-              placeholder="House words / Motto..."
-            />
-          </div>
+          </>
         )}
 
         {/* Status */}
