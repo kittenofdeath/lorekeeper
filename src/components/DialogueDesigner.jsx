@@ -253,7 +253,13 @@ export default function DialogueDesigner({ entities }) {
       const nodeG = g.append('g')
         .attr('transform', `translate(${node.x}, ${node.y})`)
         .attr('cursor', 'pointer')
-        .on('click', () => setSelectedNode(node));
+        .on('click', () => setSelectedNode(node))
+        .on('contextmenu', (event) => {
+          event.preventDefault();
+          if (confirm(`Delete "${node.text?.slice(0, 30)}..."?`)) {
+            handleDeleteNode(node.id);
+          }
+        });
 
       // Node shape - rectangle for NPC, rounded for player
       if (isPlayer) {
